@@ -1,0 +1,51 @@
+.gradle
+build/
+postgres-data/
+logs/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**
+!**/src/test/**
+temp-*.html
+temp-*.pdf
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Mac ###
+.DS_Store
+
+### Local config file that we want to bring from git but not track by it.
+.env.override
+
+### HTTP environment with private token we don't want in version control
+http/http-client.private.env.json
+
+### List of users to upload that we don't want in version control
+http/user_list.csv
+
+inputs/**
+# Ignore Gradle build output directory
+build
