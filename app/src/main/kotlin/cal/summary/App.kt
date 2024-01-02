@@ -22,43 +22,50 @@ private val objectMapper by lazy {
         }
 }
 
-private val defaultConfig = CalendarConfig(
-    mapping = mapOf(
-        "interview" to MaterializedEventType(
-            Regex("(?!HOLD!).*[iI]nterview.*")
-        ),
-        "debrief" to MaterializedEventType(
-            Regex(".*[dD]ebrief.*")
-        )
+private val defaultConfig =
+    CalendarConfig(
+        mapping =
+            mapOf(
+                "interview" to
+                    MaterializedEventType(
+                        Regex("(?!HOLD!).*[iI]nterview.*"),
+                    ),
+                "debrief" to
+                    MaterializedEventType(
+                        Regex(".*[dD]ebrief.*"),
+                    ),
+            ),
     )
-)
 
-private val configHelp = """
+private val configHelp =
+    """
     Here default config file is
     ${jacksonObjectMapper().writeValueAsString(defaultConfig.toSerializable())}
-""".trimIndent()
+    """.trimIndent()
 
-class App: CliktCommand(epilog = configHelp) {
-
-
+class App : CliktCommand(epilog = configHelp) {
     private val now = LocalDate.now()
     private val aLotEarlier = now.minusYears(10)
 
-    private val calendarFile: File by argument().file(mustExist = true,  mustBeReadable = true).help("Calendar to read")
-    private val configFile: CalendarConfig<MaterializedEventType> by option("-c").file(mustExist = true,  mustBeReadable = true).help("Config file for mapping").transformAll { files ->
+    private val calendarFile: File by argument().file(mustExist = true, mustBeReadable = true).help("Calendar to read")
+    private val configFile: CalendarConfig<MaterializedEventType> by option(
+        "-c",
+    ).file(mustExist = true, mustBeReadable = true).help("Config file for mapping").transformAll {
+            files ->
         files.firstNotNullOfOrNull { file ->
-            val read: CalendarConfig<MaterializedEventType>? = try {
-                file.inputStream().bufferedReader().use {
-                    objectMapper.readValue<CalendarConfig<SerializedEventType>>(it).toProper()
+            val read: CalendarConfig<MaterializedEventType>? =
+                try {
+                    file.inputStream().bufferedReader().use {
+                        objectMapper.readValue<CalendarConfig<SerializedEventType>>(it).toProper()
+                    }
+                } catch (e: JacksonException) {
+                    null
                 }
-            } catch (e: JacksonException) {
-                null
-            }
             read
         } ?: defaultConfig
     }
     private val toDate: LocalDate by option("-f").help("From date").transformAll(
-        defaultForHelp = now.toString()
+        defaultForHelp = now.toString(),
     ) {
         it.firstNotNullOfOrNull { maybeDate ->
             LocalDate.parse(maybeDate)
@@ -66,7 +73,7 @@ class App: CliktCommand(epilog = configHelp) {
     }
 
     private val fromDate: LocalDate by option("-t").help("To date").transformAll(
-        defaultForHelp = aLotEarlier.toString()
+        defaultForHelp = aLotEarlier.toString(),
     ) {
         it.firstNotNullOfOrNull { maybeDate ->
             LocalDate.parse(maybeDate)
@@ -74,38 +81,38 @@ class App: CliktCommand(epilog = configHelp) {
     }
 
     override fun run() {
-
-
         calendarFile.inputStream().buffered().use { calendar ->
-            val dateRange = fromDate .. toDate
+            val dateRange = fromDate..toDate
             val calendarData = CalendarReader.readCalendar(calendar, configFile, dateRange)
             configFile.mapping.forEach { (name, _) ->
                 val calData = calendarData[name]
-                val total = calData?.fold(Duration.ZERO) { acc, data ->
-                    acc.plus(data.duration)
-                } ?: Duration.ZERO
+                val total =
+                    calData?.fold(Duration.ZERO) { acc, data ->
+                        acc.plus(data.duration)
+                    } ?: Duration.ZERO
                 val count = calData?.size ?: 0
-                val first = calData?.fold(null as LocalDateTime?) { acc, data ->
-                    if (acc == null || acc.isAfter(data.start)) {
-                        data.start
-                    } else {
-                        acc
+                val first =
+                    calData?.fold(null as LocalDateTime?) { acc, data ->
+                        if (acc == null || acc.isAfter(data.start)) {
+                            data.start
+                        } else {
+                            acc
+                        }
                     }
-                }
-                val last = calData?.fold(null as LocalDateTime?) { acc, data ->
-                    if (acc == null || acc.isBefore(data.end)) {
-                        data.end
-                    } else {
-                        acc
+                val last =
+                    calData?.fold(null as LocalDateTime?) { acc, data ->
+                        if (acc == null || acc.isBefore(data.end)) {
+                            data.end
+                        } else {
+                            acc
+                        }
                     }
-                }
                 val prettyHours = String.format("%d h %d min", total.seconds / (TimeUnit.HOURS.toSeconds(1)), total.toSecondsPart())
 
-                println("$name: $prettyHours ($count entries between ${first} ... ${last})")
+                println("$name: $prettyHours ($count entries between $first ... $last)")
             }
         }
     }
-
 }
 
 fun main(args: Array<String>) {

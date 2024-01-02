@@ -5,6 +5,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     id("org.jetbrains.kotlin.jvm") version "1.9.21"
     id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("org.jlleitschuh.gradle.ktlint") version "12.0.3"
     application
 }
 
@@ -42,7 +43,6 @@ dependencies {
     implementation("com.github.ajalt.clikt:clikt:4.2.1")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.16.0")
     implementation("org.mnode.ical4j:ical4j:3.2.14")
-
 }
 
 tasks.withType<ShadowJar> {

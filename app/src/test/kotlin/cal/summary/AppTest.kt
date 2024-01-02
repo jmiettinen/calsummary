@@ -3,6 +3,4 @@
  */
 package cal.summary
 
-class AppTest {
-
-}
+class AppTest
