@@ -1,9 +1,29 @@
-plugins {
-    // Apply the org.jetbrains.kotlin.jvm Plugin to add support for Kotlin.
-    id("org.jetbrains.kotlin.jvm") version "1.9.21"
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
-    // Apply the application plugin to add support for building a CLI application in Java.
+plugins {
+    id("org.jetbrains.kotlin.jvm") version "1.9.21"
+    id("com.github.johnrengelman.shadow") version "7.1.2"
     application
+}
+
+val javaVersionToUse = JavaVersion.VERSION_17
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(javaVersionToUse.majorVersion))
+        vendor.set(JvmVendorSpec.AMAZON)
+    }
+    // IDEA Is having a bad day with this.
+//    sourceCompatibility = javaVersionToUse
+}
+
+tasks.withType<KotlinCompile> {
+    compilerOptions {
+        freeCompilerArgs.set(listOf("-Xjsr305=strict"))
+        jvmTarget.set(JvmTarget.fromTarget(javaVersionToUse.majorVersion))
+    }
 }
 
 repositories {
@@ -25,8 +45,13 @@ dependencies {
 
 }
 
+tasks.withType<ShadowJar> {
+    this.archiveBaseName.set("calsummary")
+    this.archiveClassifier.set("")
+    this.archiveVersion.set("")
+}
+
 application {
-    // Define the main class for the application.
     mainClass.set("cal.summary.AppKt")
 }
 

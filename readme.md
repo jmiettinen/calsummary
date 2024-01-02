@@ -7,7 +7,7 @@ and choose "Export Calendar".
 Run
 ```shell
 ./gradlew build
-java -jar cal-summary.jar <PATH_TO_MY_EXPORTED_CALENDAR>
+java -jar app/build/libs/calsummary.jar <PATH_TO_MY_EXPORTED_CALENDAR>
 ```
 
 
