@@ -8,7 +8,7 @@
 
 plugins {
     // Apply the org.jetbrains.kotlin.jvm Plugin to add support for Kotlin.
-    id("org.jetbrains.kotlin.jvm") version "1.7.10"
+    id("org.jetbrains.kotlin.jvm") version "1.9.21"
 
     // Apply the application plugin to add support for building a CLI application in Java.
     application
@@ -26,8 +26,11 @@ dependencies {
     // Use the JUnit 5 integration.
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.1")
 
-    // This dependency is used by the application.
-    implementation("com.google.guava:guava:31.1-jre")
+    implementation("org.slf4j:slf4j-simple:2.0.9")
+    implementation("com.github.ajalt.clikt:clikt:4.2.1")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.16.0")
+    implementation("org.mnode.ical4j:ical4j:3.2.14")
+
 }
 
 application {

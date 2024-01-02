@@ -3,13 +3,70 @@
  */
 package cal.summary
 
-class App {
-    val greeting: String
-        get() {
-            return "Hello World!"
+import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.arguments.help
+import com.github.ajalt.clikt.parameters.options.help
+import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.types.file
+import java.io.File
+import java.time.Duration
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.util.concurrent.TimeUnit
+
+class App: CliktCommand() {
+
+    private val calendarFile: File by argument().file(mustExist = true,  mustBeReadable = true).help("Calendar to read")
+    private val configFile: File? by option("-c").file(mustExist = true,  mustBeReadable = true).help("Config file for mapping")
+
+    private val toDate = LocalDate.now()
+    private val fromDate = toDate.minusYears(10)
+    private val readConfig = CalendarConfig(
+        mapping = mapOf(
+            "interview" to MaterializedEventType(
+                Regex("[Ii]nterview.*")
+            ),
+            "debrief" to MaterializedEventType(
+                Regex("[dD]ebrief.*")
+            )
+        )
+    )
+
+    override fun run() {
+        calendarFile.inputStream().buffered().use { calendar ->
+            val dateRange = fromDate .. toDate
+            val calendarData = CalendarReader.readCalendar(calendar, readConfig, dateRange)
+            readConfig.mapping.forEach { (name, _) ->
+                val calData = calendarData[name]
+                val total = calData?.fold(Duration.ZERO) { acc, data ->
+                    acc.plus(data.duration)
+                } ?: Duration.ZERO
+                val count = calData?.size ?: 0
+                val first = calData?.fold(null as LocalDateTime?) { acc, data ->
+                    if (acc == null || acc.isAfter(data.start)) {
+                        data.start
+                    } else {
+                        acc
+                    }
+                }
+                val last = calData?.fold(null as LocalDateTime?) { acc, data ->
+                    if (acc == null || acc.isBefore(data.end)) {
+                        data.end
+                    } else {
+                        acc
+                    }
+                }
+                val prettyHours = String.format("%d h %d min", total.seconds / (TimeUnit.HOURS.toSeconds(1)), total.toSecondsPart())
+
+                println("$name: $prettyHours ($count entries between ${first} ... ${last})")
+            }
         }
+    }
+
 }
 
-fun main() {
-    println(App().greeting)
+fun main(args: Array<String>) {
+    App().main(args)
 }
