@@ -20,18 +20,15 @@ private val objectMapper by lazy {
 }
 
 private val defaultConfig =
-    CalendarConfig(
-        mapping =
-            mapOf(
-                "interview" to
-                    MaterializedEventType(
-                        Regex("(?!HOLD!).*[iI]nterview.*"),
-                    ),
-                "debrief" to
-                    MaterializedEventType(
-                        Regex(".*[dD]ebrief.*"),
-                    ),
-            ),
+    listOf(
+        MaterializedEventType(
+            "interview",
+            Regex("(?!HOLD!).*[iI]nterview.*"),
+        ),
+        MaterializedEventType(
+            "debrief",
+            Regex(".*[dD]ebrief.*"),
+        ),
     )
 
 private val configHelp =
@@ -45,15 +42,15 @@ class App : CliktCommand(epilog = configHelp) {
     private val aLotEarlier = LocalDate.MIN
 
     private val calendarFile: File by argument().file(mustExist = true, mustBeReadable = true).help("Calendar to read")
-    private val config: CalendarConfig<MaterializedEventType> by option(
+    private val config: List<MaterializedEventType> by option(
         "-c",
     ).file(mustExist = true, mustBeReadable = true).help("Config file for mapping").transformAll {
             files ->
         files.firstNotNullOfOrNull { file ->
-            val read: CalendarConfig<MaterializedEventType>? =
+            val read: List<MaterializedEventType>? =
                 try {
                     file.inputStream().bufferedReader().use {
-                        objectMapper.readValue<CalendarConfig<SerializedEventType>>(it).toProper()
+                        objectMapper.readValue<List<SerializedEventType>>(it).toMaterialized()
                     }
                 } catch (e: JacksonException) {
                     null
@@ -82,14 +79,15 @@ class App : CliktCommand(epilog = configHelp) {
             val dateRange = fromDate..toDate
             val calendarData = CalendarReader.read(calendar, config, dateRange)
             val summary = CalendarReader.calculateSummary(calendarData, config)
+            val keyToIndex = config.mapIndexed { i, v -> v.name to i }.toMap()
             summary.years.sortedBy { it.year }.forEach { yearlySummary ->
                 println("${yearlySummary.year}:")
-                yearlySummary.byType.entries.sortedBy { it.key }.forEach { (_, summary) ->
+                yearlySummary.byType.entries.sortedBy { keyToIndex[it.key] }.forEach { (_, summary) ->
                     println("${summary.type}: ${summary.prettyHours} (${summary.count} entries)")
                 }
             }
             println("Total:")
-            summary.grandSummary.sortedBy { it.type }.forEach { typeSummary ->
+            summary.grandSummary.sortedBy { keyToIndex[it.type] }.forEach { typeSummary ->
                 println("${typeSummary.type}: ${typeSummary.prettyHours} (${typeSummary.count} entries)")
             }
         }

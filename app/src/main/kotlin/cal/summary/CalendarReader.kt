@@ -12,14 +12,14 @@ import java.util.concurrent.TimeUnit
 object CalendarReader {
     fun read(
         inputStream: InputStream,
-        mapping: CalendarConfig<MaterializedEventType>,
+        mapping: List<MaterializedEventType>,
         dateRange: ClosedRange<LocalDate>,
     ): Map<String, List<CalendarEvent>> {
         val cal = CalendarBuilder().build(inputStream)
         val events = cal.components.filterIsInstance<VEvent>()
         val eventsByType =
-            mapping.mapping.keys.associateWith {
-                mutableListOf<CalendarEvent>()
+            mapping.associate {
+                it.name to mutableListOf<CalendarEvent>()
             }.toMutableMap()
         val localZone = ZoneId.systemDefault()
         val rangeStart = dateRange.start.atStartOfDay()
@@ -27,13 +27,13 @@ object CalendarReader {
 
         events.forEach { event ->
             val maybeMatch =
-                mapping.mapping.entries.asSequence().mapNotNull {
+                mapping.asSequence().mapNotNull {
                     val title = event.summary?.value
-                    if (title != null && it.value.matcher.matches(title)) {
+                    if (title != null && it.matcher.matches(title)) {
                         val start = event.startDate.date.toInstant().atZone(localZone).toLocalDateTime()
                         val end = event.endDate.date.toInstant().atZone(localZone).toLocalDateTime()
                         if (start >= rangeStart && end < rangeEndExclusive) {
-                            it.key to CalendarEvent(title, start, end)
+                            it.name to CalendarEvent(title, start, end)
                         } else {
                             null
                         }
@@ -51,16 +51,15 @@ object CalendarReader {
 
     fun calculateSummary(
         calendarData: Map<String, List<CalendarEvent>>,
-        mapping: CalendarConfig<MaterializedEventType>,
+        mapping: List<MaterializedEventType>,
     ): Summary {
         val years = calendarData.values.asSequence().flatten().map { it.start.year }.toSet()
-        val keys = mapping.mapping.keys.toList()
         val yearlySummaries =
             years.map { year ->
                 YearlySummary(
                     year = year,
                     byType =
-                        keys.associateWith { name ->
+                        mapping.associate { (name, _) ->
                             val calData = calendarData[name] ?: listOf()
                             val forThisYear = calData.filter { it.start.year == year }
                             val total = forThisYear.fold(Duration.ZERO) { acc, data -> acc + data.duration }
@@ -81,17 +80,18 @@ object CalendarReader {
                                         acc
                                     }
                                 }
-                            TypeSummary(
-                                type = name,
-                                total = total,
-                                count = count,
-                                firstEvent = first,
-                                lastEvent = last,
-                            )
+                            name to
+                                TypeSummary(
+                                    type = name,
+                                    total = total,
+                                    count = count,
+                                    firstEvent = first,
+                                    lastEvent = last,
+                                )
                         },
                 )
             }
-        return Summary(years = yearlySummaries, keys = keys)
+        return Summary(years = yearlySummaries, keys = mapping.map { it.name })
     }
 
     data class Summary(val years: List<YearlySummary>, val keys: List<String>) {

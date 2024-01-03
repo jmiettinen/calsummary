@@ -10,4 +10,9 @@ Run
 java -jar app/build/libs/calsummary.jar <PATH_TO_MY_EXPORTED_CALENDAR>
 ```
 
-
+For custom matchers, see
+`java -jar app/build/libs/calsummary.jar` for format and then
+```shell
+java -jar app/build/libs/calsummary.jar -c config.json <PATH_TO_MY_EXPORTED_CALENDAR>
+```
+run with `config.json`.
