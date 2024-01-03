@@ -54,12 +54,14 @@ object CalendarReader {
         mapping: CalendarConfig<MaterializedEventType>,
     ): Summary {
         val years = calendarData.values.asSequence().flatten().map { it.start.year }.toSet()
+        val keys = mapping.mapping.keys.toList()
         val yearlySummaries =
             years.map { year ->
                 YearlySummary(
                     year = year,
                     byType =
-                        calendarData.entries.map { (name, calData) ->
+                        keys.associateWith { name ->
+                            val calData = calendarData[name] ?: listOf()
                             val forThisYear = calData.filter { it.start.year == year }
                             val total = forThisYear.fold(Duration.ZERO) { acc, data -> acc + data.duration }
                             val count = forThisYear.size
@@ -79,16 +81,48 @@ object CalendarReader {
                                         acc
                                     }
                                 }
-                            name to TypeSummary(type = name, total = total, count = count, firstEvent = first, lastEvent = last)
-                        }.toMap(),
+                            TypeSummary(
+                                type = name,
+                                total = total,
+                                count = count,
+                                firstEvent = first,
+                                lastEvent = last,
+                            )
+                        },
                 )
             }
-        return Summary(years = yearlySummaries)
+        return Summary(years = yearlySummaries, keys = keys)
     }
 
-    data class Summary(val years: List<YearlySummary>) {
+    data class Summary(val years: List<YearlySummary>, val keys: List<String>) {
         val grandSummary: List<TypeSummary> by lazy {
-            listOf()
+            val byType = keys.associateWith { TypeSummary(it, Duration.ZERO, 0, null, null) }.toMutableMap()
+            years.forEach { yearlySummary ->
+                yearlySummary.byType.entries.forEach { (type, data) ->
+                    val old = byType[type]!!
+                    val newFirst =
+                        if (old.firstEvent == null || (data.firstEvent != null && data.firstEvent < old.firstEvent)) {
+                            data.firstEvent
+                        } else {
+                            old.firstEvent
+                        }
+                    val newLast =
+                        if (old.lastEvent == null || (data.lastEvent != null && data.lastEvent > old.lastEvent)) {
+                            data.lastEvent
+                        } else {
+                            old.lastEvent
+                        }
+                    byType[type] =
+                        old.copy(
+                            type = type,
+                            total = old.total + data.total,
+                            count = old.count + data.count,
+                            firstEvent = newFirst,
+                            lastEvent = newLast,
+                        )
+                }
+            }
+            keys.map { byType[it]!! }
         }
     }
 

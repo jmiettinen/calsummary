@@ -42,7 +42,7 @@ private val configHelp =
 
 class App : CliktCommand(epilog = configHelp) {
     private val now = LocalDate.now()
-    private val aLotEarlier = now.minusYears(10)
+    private val aLotEarlier = LocalDate.MIN
 
     private val calendarFile: File by argument().file(mustExist = true, mustBeReadable = true).help("Calendar to read")
     private val config: CalendarConfig<MaterializedEventType> by option(
@@ -83,10 +83,14 @@ class App : CliktCommand(epilog = configHelp) {
             val calendarData = CalendarReader.read(calendar, config, dateRange)
             val summary = CalendarReader.calculateSummary(calendarData, config)
             summary.years.sortedBy { it.year }.forEach { yearlySummary ->
-                println("${yearlySummary.year}")
-                yearlySummary.byType.entries.sortedBy { it.key }.forEach { (name, summary) ->
-                    println("$name: ${summary.prettyHours} (${summary.count} entries)")
+                println("${yearlySummary.year}:")
+                yearlySummary.byType.entries.sortedBy { it.key }.forEach { (_, summary) ->
+                    println("${summary.type}: ${summary.prettyHours} (${summary.count} entries)")
                 }
+            }
+            println("Total:")
+            summary.grandSummary.sortedBy { it.type }.forEach { typeSummary ->
+                println("${typeSummary.type}: ${typeSummary.prettyHours} (${typeSummary.count} entries)")
             }
         }
     }
