@@ -77,7 +77,8 @@ class App : CliktCommand(epilog = configHelp) {
     override fun run() {
         calendarFile.inputStream().buffered().use { calendar ->
             val dateRange = fromDate..toDate
-            val calendarData = CalendarReader.read(calendar, config, dateRange)
+            val eventStream = CalendarReader.readEvents(calendar)
+            val calendarData = CalendarReader.read(eventStream, config, dateRange)
             val summary = CalendarReader.calculateSummary(calendarData, config)
             val keyToIndex = config.mapIndexed { i, v -> v.name to i }.toMap()
             summary.years.sortedBy { it.year }.forEach { yearlySummary ->

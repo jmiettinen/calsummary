@@ -33,11 +33,10 @@ repositories {
 }
 
 dependencies {
-    // Use the Kotlin JUnit 5 integration.
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 
-    // Use the JUnit 5 integration.
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.1")
+    testImplementation("io.kotest:kotest-assertions-core:5.8.0")
 
     implementation("org.slf4j:slf4j-simple:2.0.9")
     implementation("com.github.ajalt.clikt:clikt:4.2.1")

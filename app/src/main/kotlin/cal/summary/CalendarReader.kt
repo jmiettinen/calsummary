@@ -6,34 +6,43 @@ import java.io.InputStream
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.ZoneId
+import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
 object CalendarReader {
-    fun read(
+    fun readEvents(
         inputStream: InputStream,
+        timeZone: TimeZone = TimeZone.getDefault(),
+    ): Sequence<CalendarEvent> {
+        val cal = CalendarBuilder().build(inputStream)
+        val zoneId = timeZone.toZoneId()
+        return cal.components.asSequence()
+            .filterIsInstance<VEvent>()
+            .map { event ->
+                val start = event.startDate.date.toInstant().atZone(zoneId).toLocalDateTime()
+                val end = event.endDate.date.toInstant().atZone(zoneId).toLocalDateTime()
+                CalendarEvent(event.summary?.value ?: "", start, end)
+            }
+    }
+
+    fun read(
+        events: Sequence<CalendarEvent>,
         mapping: List<MaterializedEventType>,
         dateRange: ClosedRange<LocalDate>,
     ): Map<String, List<CalendarEvent>> {
-        val cal = CalendarBuilder().build(inputStream)
-        val events = cal.components.filterIsInstance<VEvent>()
         val eventsByType =
             mapping.associate {
-                it.name to mutableListOf<CalendarEvent>()
+                it.name to mutableMapOf<ClosedRange<LocalDateTime>, CalendarEvent>()
             }.toMutableMap()
-        val localZone = ZoneId.systemDefault()
-        val rangeStart = dateRange.start.atStartOfDay()
-        val rangeEndExclusive = dateRange.endInclusive.plusDays(1).atStartOfDay()
+        val dateTimeRange = dateRange.start.atStartOfDay()..dateRange.endInclusive.plusDays(1).atStartOfDay().minusNanos(1)
 
         events.forEach { event ->
             val maybeMatch =
                 mapping.asSequence().mapNotNull {
-                    val title = event.summary?.value
-                    if (title != null && it.matcher.matches(title)) {
-                        val start = event.startDate.date.toInstant().atZone(localZone).toLocalDateTime()
-                        val end = event.endDate.date.toInstant().atZone(localZone).toLocalDateTime()
-                        if (start >= rangeStart && end < rangeEndExclusive) {
-                            it.name to CalendarEvent(title, start, end)
+                    val title = event.name
+                    if (it.matcher.matches(title)) {
+                        if (event.start in dateTimeRange && event.end in dateTimeRange) {
+                            it.name to event
                         } else {
                             null
                         }
@@ -43,10 +52,14 @@ object CalendarReader {
                 }.firstOrNull()
             if (maybeMatch != null) {
                 val (key, match) = maybeMatch
-                eventsByType[key]!!.add(match)
+                val range = match.start..match.end
+                // Only one per range
+                eventsByType[key]!![range] = match
             }
         }
-        return eventsByType
+        return eventsByType.mapValues { (_, map) ->
+            map.values.toList()
+        }
     }
 
     fun calculateSummary(
