@@ -21,11 +21,11 @@ private val objectMapper by lazy {
         }
 }
 
-private val defaultConfig =
+internal val defaultConfig =
     listOf(
         MaterializedEventType(
             "interview",
-            Regex("(?!HOLD!).*[iI]nterview.*"),
+            Regex("(Wolt tech interview.*)|(Interview\\s+(?!prep).+)|(Team interview.*)|(.*Fast Track.*)"),
         ),
         MaterializedEventType(
             "debrief",
@@ -45,6 +45,15 @@ class App : CliktCommand(epilog = configHelp) {
 
     private val calendarFile: File by argument().file(mustExist = true, mustBeReadable = true).help("Calendar to read")
     private val listAllEvents: Boolean by option("--show-all").flag().help("Print all matching events")
+
+    private val filterByAttendees: Regex by option(
+        "--attendees",
+    ).help("Regex to filter in events only with specific attendees").transformAll {
+            input ->
+        input.firstNotNullOfOrNull { maybeRegex ->
+            Regex(maybeRegex)
+        } ?: Regex(".*")
+    }
 
     private val config: List<MaterializedEventType> by option(
         "-c",
@@ -107,7 +116,7 @@ class App : CliktCommand(epilog = configHelp) {
         calendarFile.inputStream().buffered().use { calendar ->
             val dateRange = fromDate..toDate
             val eventStream = CalendarReader.readEvents(calendar)
-            val calendarData = CalendarReader.read(eventStream, config, dateRange)
+            val calendarData = CalendarReader.read(eventStream, config, dateRange, filterByAttendees)
             if (listAllEvents) {
                 printFull(calendarData)
             } else {

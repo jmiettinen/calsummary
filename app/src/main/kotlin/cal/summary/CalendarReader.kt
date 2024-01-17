@@ -1,7 +1,13 @@
 package cal.summary
 
 import net.fortuna.ical4j.data.CalendarBuilder
+import net.fortuna.ical4j.model.Parameter
+import net.fortuna.ical4j.model.Property
 import net.fortuna.ical4j.model.component.VEvent
+import net.fortuna.ical4j.model.parameter.Cn
+import net.fortuna.ical4j.model.parameter.PartStat
+import net.fortuna.ical4j.model.property.Attendee
+import net.fortuna.ical4j.model.property.Status
 import java.io.InputStream
 import java.time.Duration
 import java.time.LocalDate
@@ -18,17 +24,48 @@ object CalendarReader {
         val zoneId = timeZone.toZoneId()
         return cal.components.asSequence()
             .filterIsInstance<VEvent>()
-            .map { event ->
+            .mapNotNull { event ->
                 val start = event.startDate.date.toInstant().atZone(zoneId).toLocalDateTime()
                 val end = event.endDate.date.toInstant().atZone(zoneId).toLocalDateTime()
-                CalendarEvent(event.summary?.value ?: "", start, end)
+                if (!isCancelled(event)) {
+                    CalendarEvent(event.summary?.value ?: "", start, end, attendees(event))
+                } else {
+                    null
+                }
             }
+    }
+
+    private fun isCancelled(event: VEvent): Boolean {
+        val maybeStatus = event.getProperty<Status>(Property.STATUS)?.value
+        return maybeStatus == Status.VEVENT_CANCELLED.value
+    }
+
+    private fun attendees(event: VEvent): List<String> {
+        val didAttend = setOf(PartStat.IN_PROCESS, PartStat.COMPLETED, PartStat.TENTATIVE, PartStat.ACCEPTED).map { it.value }
+        val attendees = event.getProperties<Attendee>(Property.ATTENDEE)
+        return attendees.mapNotNull {
+            val params = it.parameters
+            val partStatus = params.getParameter<PartStat>(Parameter.PARTSTAT)?.value
+            if (partStatus != null && partStatus in didAttend) {
+                params.getParameter<Cn>(Parameter.CN)?.value
+            } else {
+                null
+            }
+        }
+    }
+
+    private fun isAttendedBy(
+        email: String,
+        event: VEvent,
+    ): Boolean? {
+        return null
     }
 
     fun read(
         events: Sequence<CalendarEvent>,
         mapping: List<MaterializedEventType>,
         dateRange: ClosedRange<LocalDate>,
+        attendeeFilterRegex: Regex,
     ): Map<String, List<CalendarEvent>> {
         val eventsByType =
             mapping.associate {
@@ -41,7 +78,8 @@ object CalendarReader {
                 mapping.asSequence().mapNotNull {
                     val title = event.name
                     if (it.matcher.matches(title)) {
-                        if (event.start in dateTimeRange && event.end in dateTimeRange) {
+                        val attendedByRelevantParty = event.attendees.any { attendee -> attendeeFilterRegex.matches(attendee) }
+                        if (attendedByRelevantParty && event.start in dateTimeRange && event.end in dateTimeRange) {
                             it.name to event
                         } else {
                             null

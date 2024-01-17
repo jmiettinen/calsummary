@@ -20,15 +20,16 @@ class CalendarReaderTest {
             commonStart.let { d ->
                 LocalDateTime.of(d.year, d.month, d.dayOfMonth, d.hour + 2, d.minute, d.second)
             }
+        val attendees = listOf("email@example.com")
         val events =
             listOf(
-                CalendarEvent("${commonPrefix}_1", commonStart, commonEnd),
-                CalendarEvent("${commonPrefix}_2", commonStart, commonEnd),
-                CalendarEvent("${commonPrefix}_3", commonStart, commonEnd),
+                CalendarEvent("${commonPrefix}_1", commonStart, commonEnd, attendees),
+                CalendarEvent("${commonPrefix}_2", commonStart, commonEnd, attendees),
+                CalendarEvent("${commonPrefix}_3", commonStart, commonEnd, attendees),
             )
         val eventTypes = listOf(MaterializedEventType(name = commonPrefix, matcher = Regex("$commonPrefix.*")))
 
-        val res = CalendarReader.read(events.asSequence(), eventTypes, allTheTime)
+        val res = CalendarReader.read(events.asSequence(), eventTypes, allTheTime, Regex(".*"))
         val resultEvents = res[eventTypes.first().name].shouldNotBeNull()
         resultEvents.size shouldBe 1
     }

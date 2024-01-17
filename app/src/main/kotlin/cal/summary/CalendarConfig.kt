@@ -19,7 +19,7 @@ data class SerializedEventType(override val name: String, val matcherRegex: Stri
 
 data class MaterializedEventType(override val name: String, val matcher: Regex) : GeneralEventType(name)
 
-data class CalendarEvent(val name: String, val start: LocalDateTime, val end: LocalDateTime) {
+data class CalendarEvent(val name: String, val start: LocalDateTime, val end: LocalDateTime, val attendees: List<String>) {
     val duration: Duration by lazy {
         Duration.between(start, end)
     }
