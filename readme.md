@@ -8,6 +8,8 @@ Run
 ```shell
 ./gradlew build
 java -jar app/build/libs/calsummary.jar <PATH_TO_MY_EXPORTED_CALENDAR>
+# Or for listing all matching events
+java -jar app/build/libs/calsummary.jar --show-all <PATH_TO_MY_EXPORTED_CALENDAR>
 ```
 
 For custom matchers, see

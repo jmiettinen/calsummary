@@ -141,6 +141,12 @@ object CalendarReader {
 
     data class YearlySummary(val year: Int, val byType: Map<String, TypeSummary>)
 
+    fun Duration.prettyHours(): String {
+        val fullHours = seconds / (TimeUnit.HOURS.toSeconds(1))
+        val fullMinutes = (seconds - (fullHours * TimeUnit.HOURS.toSeconds(1))) / TimeUnit.MINUTES.toSeconds(1)
+        return String.format("%d h %d min", fullHours, fullMinutes)
+    }
+
     data class TypeSummary(
         val type: String,
         val total: Duration,
@@ -148,7 +154,6 @@ object CalendarReader {
         val firstEvent: LocalDateTime?,
         val lastEvent: LocalDateTime?,
     ) {
-        val prettyHours =
-            String.format("%d h %d min", total.seconds / (TimeUnit.HOURS.toSeconds(1)), total.toSecondsPart())
+        val prettyHours = total.prettyHours()
     }
 }
